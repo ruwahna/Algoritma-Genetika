@@ -53,7 +53,11 @@ def hitung_fitness(x):
 
 **Deskripsi**
 
-    Fungsi integer_ke_biner mengubah nilai angka menjadi format string biner. Penggunaan .zfill(5) memastikan bahwa angka kecil seperti $2$ tetap memiliki panjang 5 digit (00010), yang sangat penting agar titik potong saat persilangan gen tetap konsisten. Fungsi hitung_fitness mendefinisikan tujuan algoritma, yaitu mencari nilai $x$ yang menghasilkan $x^2$ terbesar.
+    Fungsi integer_ke_biner mengubah nilai angka menjadi format string biner. 
+    Penggunaan .zfill(5) memastikan bahwa angka kecil seperti $2$ tetap memiliki 
+    panjang 5 digit (00010), yang sangat penting agar titik potong saat 
+    persilangan gen tetap konsisten. Fungsi hitung_fitness mendefinisikan 
+    tujuan algoritma, yaitu mencari nilai $x$ yang menghasilkan $x^2$ terbesar.
 
 **2. Mekanisme Seleksi Roulette Wheel**
 
@@ -78,7 +82,13 @@ def roulette_selection(populasi):
 
 **Deskripsi**
 
-    Kode ini bekerja dengan menjumlahkan seluruh nilai fitness populasi untuk menentukan total area "roda". Setiap individu diberikan porsi area berdasarkan perbandingan nilai fitness-nya terhadap total. Kemudian, sebuah angka acak r dibangkitkan untuk menentukan individu mana yang terpilih. Semakin tinggi nilai $x^2$, semakin besar rentang probabilitas kumulatifnya, sehingga semakin besar peluang individu tersebut terpilih sebagai orang tua.
+    Kode ini bekerja dengan menjumlahkan seluruh nilai fitness populasi 
+    untuk menentukan total area "roda". Setiap individu diberikan porsi
+     area berdasarkan perbandingan nilai fitness-nya terhadap total. 
+     Kemudian, sebuah angka acak r dibangkitkan untuk menentukan individu 
+     mana yang terpilih. Semakin tinggi nilai $x^2$, semakin besar rentang 
+     probabilitas kumulatifnya, sehingga semakin besar peluang individu 
+     tersebut terpilih sebagai orang tua.
 
 **3. Operator Crossover (Pindah Silang)**
 
@@ -97,7 +107,12 @@ def crossover(p1_bin, p2_bin, rate):
 
 **Deskripsi**
 
-    Sesuai instruksi, kita menggunakan One-Point Crossover dengan probabilitas $0.8$. Jika angka acak di bawah $0.8$, program akan memilih satu titik potong secara acak dan menukar bagian ekor biner dari kedua orang tua. Proses ini memungkinkan kombinasi bit-bit yang menghasilkan angka besar (seperti bit di posisi depan) untuk menurun ke generasi berikutnya.
+    Sesuai instruksi, kita menggunakan One-Point Crossover dengan 
+    probabilitas $0.8$. Jika angka acak di bawah $0.8$, program akan 
+    memilih satu titik potong secara acak dan menukar bagian ekor 
+    biner dari kedua orang tua. Proses ini memungkinkan kombinasi 
+    bit-bit yang menghasilkan angka besar (seperti bit di posisi depan) 
+    untuk menurun ke generasi berikutnya.
 
 **4. Operasi Mutasi**
 
@@ -114,7 +129,12 @@ def mutation(individu_bin, rate):
 
 **Deskripsi**
 
-    Dengan probabilitas mutasi yang sangat kecil ($0.003$), setiap bit dalam kromosom berpeluang untuk berubah nilainya (0 menjadi 1 atau sebaliknya). Meskipun jarang terjadi, mutasi sangat penting untuk menjaga agar algoritma tidak terjebak pada angka yang itu-itu saja dan mampu menjelajahi kemungkinan nilai $x$ lainnya.
+    Dengan probabilitas mutasi yang sangat kecil ($0.003$), 
+    setiap bit dalam kromosom berpeluang untuk berubah nilainya 
+    (0 menjadi 1 atau sebaliknya). Meskipun jarang terjadi, 
+    mutasi sangat penting untuk menjaga agar algoritma tidak 
+    terjebak pada angka yang itu-itu saja dan mampu menjelajahi 
+    kemungkinan nilai $x$ lainnya.
 
 **5. Loop Generasi (Iterasi Utama)**
 
@@ -139,7 +159,12 @@ for gen in range(1, max_gen + 1):
 
 **Deskripsi**
 
-    Program menjalankan perulangan sebanyak 15 kali sesuai instruksi. Di setiap generasi, populasi baru dibentuk dengan memanggil fungsi seleksi, crossover, dan mutasi secara berulang hingga kuota populasi (10 individu) terpenuhi. Pada akhir setiap generasi, kita bisa melihat bahwa rata-rata nilai fitness dalam populasi cenderung meningkat menuju nilai maksimal, yaitu $x=31$ dengan fitness $961$.
+    Program menjalankan perulangan sebanyak 15 kali sesuai instruksi. 
+    Di setiap generasi, populasi baru dibentuk dengan memanggil fungsi 
+    seleksi, crossover, dan mutasi secara berulang hingga kuota populasi 
+    (10 individu) terpenuhi. Pada akhir setiap generasi, kita bisa melihat 
+    bahwa rata-rata nilai fitness dalam populasi cenderung meningkat 
+    menuju nilai maksimal, yaitu $x=31$ dengan fitness $961$.
 
 **6. Pengaturan Parameter dan Inisialisasi Populasi**
 
@@ -158,7 +183,14 @@ populasi = [random.randint(0, 31) for _ in range(pop_size)]
 
 **Deskripsi**
 
-    Bagian ini menentukan konfigurasi algoritma sesuai dengan instruksi praktikum. Ukuran populasi dibatasi 10 individu untuk menjaga efisiensi komputasi pada fungsi sederhana ini. Probabilitas crossover sebesar 0.8 menunjukkan bahwa peluang terjadinya pertukaran gen cukup tinggi, sedangkan probabilitas mutasi 0.003 dibuat sangat rendah agar solusi yang sudah baik tidak rusak secara drastis. Populasi awal dibangkitkan secara acak menggunakan random.randint(0, 31) sebagai titik awal pencarian solusi.
+    Bagian ini menentukan konfigurasi algoritma sesuai dengan 
+    instruksi praktikum. Ukuran populasi dibatasi 10 individu 
+    untuk menjaga efisiensi komputasi pada fungsi sederhana ini. 
+    Probabilitas crossover sebesar 0.8 menunjukkan bahwa peluang 
+    terjadinya pertukaran gen cukup tinggi, sedangkan probabilitas
+     mutasi 0.003 dibuat sangat rendah agar solusi yang sudah baik 
+     tidak rusak secara drastis. Populasi awal dibangkitkan secara 
+     acak menggunakan random.randint(0, 31) sebagai titik awal pencarian solusi.
 
 **7. Hasil Akhir (Terminal Output)**
 
@@ -171,7 +203,12 @@ print(f"Nilai f(x) atau Fitness: {hitung_fitness(solusi_akhir)}")
 ```
 
 **Deskripsi**
-    Setelah melewati 15 generasi, program akan melakukan pencarian individu terakhir yang memiliki nilai fitness tertinggi di dalam populasi. Fungsi max() dengan parameter key=hitung_fitness digunakan untuk mengevaluasi setiap individu dan mengambil nilai $x$ yang paling mendekati atau tepat berada di angka 31.
+
+    Setelah melewati 15 generasi, program akan melakukan pencarian 
+    individu terakhir yang memiliki nilai fitness tertinggi di dalam 
+    populasi. Fungsi max() dengan parameter key=hitung_fitness digunakan 
+    untuk mengevaluasi setiap individu dan mengambil nilai $x$ yang paling 
+    mendekati atau tepat berada di angka 31.
 
 ---
 
