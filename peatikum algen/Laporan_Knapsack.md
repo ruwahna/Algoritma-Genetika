@@ -452,6 +452,25 @@ Improvement:
 
 **Observation:** Algoritma smartly mengoptimasi weight usage, terus dekat ke capacity namun tidak exceed.
 
+#### Grafik Output Program (Knapsack - Kapasitas 50):
+
+![Grafik Perkembangan Fitness Knapsack](hasil_knapsack.png)
+
+**Analisis Grafik:**
+- **Left Plot (Fitness Curve):**
+  - Green line (Best Value): Menunjukkan value terbaik meningkat dari Gen 1 ke Gen 100
+  - Blue line (Average Value): Rata-rata populasi mengikuti trend naik
+  - Red line (Worst Value): Value terburuk juga naik (due to elitism)
+  - Konvergensi terlihat sekitar Gen 70-80 (kurva mulai flat)
+  - Best solution mencapai value ~165 dari theoretical max
+
+- **Right Plot (Item Distribution):**
+  - Bar chart menunjukkan jumlah setiap item dalam solusi terbaik
+  - ItemA: beberapa unit (weight efficient)
+  - ItemC: banyak (value/weight ratio tertinggi = 4.0)
+  - ItemE: beberapa unit
+  - Kombinasi optimal memanfaatkan kapasitas penuh (~50)
+
 ---
 
 ### 2.9 Kondisi Konvergensi
@@ -721,6 +740,390 @@ Capacity Unused: 5 units
 - Track best/avg/worst fitness
 - Track weight usage
 - Visualize results
+```
+
+---
+
+## [5] KODE PROGRAM LENGKAP (TugasPraktikum_Knapsack.py)
+
+Berikut adalah kode program lengkap yang dapat disalin langsung:
+
+```python
+import random
+import numpy as np
+import matplotlib.pyplot as plt
+
+class AlgoritmaGenetika_Knapsack:
+    def __init__(self, items, capacity, pop_size=30, crossover_rate=0.8,
+                 mutation_rate=0.15, max_generations=100):
+        """
+        items: list of tuples (weight, value, available_qty)
+        capacity: maximum weight capacity
+        """
+        self.items = items
+        self.capacity = capacity
+        self.num_items = len(items)
+        self.pop_size = pop_size
+        self.crossover_rate = crossover_rate
+        self.mutation_rate = mutation_rate
+        self.max_generations = max_generations
+        
+        # Tracking untuk history
+        self.fitness_history = []
+        self.best_fitness_history = []
+        self.worst_fitness_history = []
+        self.avg_weight_history = []
+    
+    def hitung_weight(self, chromosome):
+        """Hitung total weight dari chromosome"""
+        total_weight = 0
+        for i, qty in enumerate(chromosome):
+            total_weight += qty * self.items[i][0]
+        return total_weight
+    
+    def hitung_value(self, chromosome):
+        """Hitung total value dari chromosome"""
+        total_value = 0
+        for i, qty in enumerate(chromosome):
+            total_value += qty * self.items[i][1]
+        return total_value
+    
+    def is_valid(self, chromosome):
+        """Check apakah chromosome memenuhi semua constraints"""
+        # Check availability
+        for i, qty in enumerate(chromosome):
+            if qty > self.items[i][2]:  # available quantity
+                return False
+            if qty < 0:
+                return False
+        
+        # Check weight capacity
+        if self.hitung_weight(chromosome) > self.capacity:
+            return False
+        
+        return True
+    
+    def hitung_fitness(self, chromosome):
+        """Hitung fitness (value) dari chromosome"""
+        if self.is_valid(chromosome):
+            return self.hitung_value(chromosome)
+        else:
+            return 0
+    
+    def inisialisasi_populasi(self):
+        """Inisialisasi populasi awal dengan random valid chromosomes"""
+        populasi = []
+        
+        for _ in range(self.pop_size):
+            # Generate random chromosome dalam bounds
+            chromosome = []
+            for i in range(self.num_items):
+                max_qty = min(self.items[i][2], 
+                             self.capacity // self.items[i][0])
+                qty = random.randint(0, max_qty)
+                chromosome.append(qty)
+            
+            # Validate
+            while not self.is_valid(chromosome):
+                # Reduce random item
+                idx = random.randint(0, self.num_items - 1)
+                if chromosome[idx] > 0:
+                    chromosome[idx] -= 1
+            
+            populasi.append(chromosome)
+        
+        return populasi
+    
+    def crossover_single_point(self, parent1, parent2):
+        """Single-point crossover"""
+        point = random.randint(1, self.num_items - 1)
+        
+        child1 = parent1[:point] + parent2[point:]
+        child2 = parent2[:point] + parent1[point:]
+        
+        return child1, child2
+    
+    def mutasi_adjustment(self, chromosome):
+        """Mutation dengan quantity adjustment"""
+        mutated = chromosome.copy()
+        
+        # Random item untuk dimutasi
+        idx = random.randint(0, self.num_items - 1)
+        
+        # Random adjustment (+1 atau -1)
+        if random.random() < 0.5 and mutated[idx] > 0:
+            mutated[idx] -= 1
+        else:
+            max_qty = self.items[idx][2]
+            if mutated[idx] < max_qty:
+                mutated[idx] += 1
+        
+        # Validate dan repair jika perlu
+        while not self.is_valid(mutated):
+            idx = random.randint(0, self.num_items - 1)
+            if mutated[idx] > 0:
+                mutated[idx] -= 1
+            else:
+                break
+        
+        return mutated
+    
+    def seleksi_roulette_wheel(self, populasi, fitness_scores):
+        """Roulette wheel selection"""
+        total_fitness = sum(fitness_scores)
+        
+        if total_fitness == 0:
+            return random.choice(populasi)
+        
+        # Normalisasi fitness menjadi probabilities
+        probabilities = [f / total_fitness for f in fitness_scores]
+        
+        # Cumulative probabilities
+        cumsum = 0
+        cumulative_probs = []
+        for p in probabilities:
+            cumsum += p
+            cumulative_probs.append(cumsum)
+        
+        # Random selection
+        r = random.random()
+        for i, cp in enumerate(cumulative_probs):
+            if r <= cp:
+                return populasi[i]
+        
+        return populasi[-1]
+    
+    def run(self):
+        """Jalankan algoritma genetika"""
+        print("=" * 100)
+        print(f"ALGORITMA GENETIKA - KNAPSACK PROBLEM (FRACTIONAL)")
+        print("=" * 100)
+        
+        # [3] PARAMETER MODEL
+        print(f"\n[3] PARAMETER MODEL ALGORITMA GENETIKA:")
+        print(f"    - Jumlah Barang: {self.num_items}")
+        print(f"    - Kapasitas Knapsack: {self.capacity} unit")
+        print(f"    - Ukuran Populasi: {self.pop_size}")
+        print(f"    - Probabilitas Crossover: {self.crossover_rate} ({self.crossover_rate*100:.0f}%)")
+        print(f"    - Probabilitas Mutasi: {self.mutation_rate} ({self.mutation_rate*100:.0f}%)")
+        print(f"    - Maksimal Generasi: {self.max_generations}")
+        print(f"    - Tipe Kromosom: Real-valued (Quantity per item)")
+        print(f"    - Tipe Crossover: SINGLE-POINT")
+        print(f"    - Tipe Mutasi: QUANTITY ADJUSTMENT")
+        print(f"    - Seleksi Parent: ROULETTE WHEEL")
+        print(f"    - Elitisme: YA")
+        
+        # [4] REPRESENTASI KROMOSOM
+        print(f"\n[4] REPRESENTASI KROMOSOM:")
+        print(f"    - Tipe: Real-valued (Integer quantities)")
+        print(f"    - Format: [qty_item_0, qty_item_1, ..., qty_item_{self.num_items-1}]")
+        print(f"    - Panjang Kromosom: {self.num_items}")
+        print(f"    - Constraint: qty[i] ≤ available[i], Σ(qty[i] × weight[i]) ≤ {self.capacity}")
+        
+        # [5] POPULASI GENERASI PERTAMA
+        populasi = self.inisialisasi_populasi()
+        print(f"\n[5] POPULASI GENERASI PERTAMA ({self.pop_size} INDIVIDU):")
+        print("─" * 100)
+        print(f"{'No':<5} {'Kromosom':<35} {'Weight':<10} {'Value':<10} {'Fitness':<10}")
+        print("─" * 100)
+        
+        # [6] NILAI FITNESS GENERASI PERTAMA
+        fitness_gen1 = []
+        data_gen1 = []
+        
+        for idx, chrom in enumerate(populasi[:10], 1):  # Tampilkan 10 pertama
+            weight = self.hitung_weight(chrom)
+            value = self.hitung_value(chrom)
+            fitness = self.hitung_fitness(chrom)
+            fitness_gen1.append(fitness)
+            data_gen1.append((chrom, weight, value, fitness))
+            
+            print(f"{idx:<5} {str(chrom):<35} {weight:<10.1f} {value:<10.1f} {fitness:<10.1f}")
+        
+        # Hitung untuk semua
+        for idx in range(10, len(populasi)):
+            chrom = populasi[idx]
+            weight = self.hitung_weight(chrom)
+            value = self.hitung_value(chrom)
+            fitness = self.hitung_fitness(chrom)
+            fitness_gen1.append(fitness)
+            data_gen1.append((chrom, weight, value, fitness))
+        
+        print("─" * 100)
+        
+        # [7] ANALISIS FITNESS GENERASI 1
+        print(f"\n[6] ANALISIS NILAI FITNESS GENERASI 1:")
+        print(f"    - Fitness Maksimum (Terbaik): {max(fitness_gen1):.2f}")
+        print(f"    - Fitness Minimum (Terburuk): {min(fitness_gen1):.2f}")
+        print(f"    - Fitness Rata-rata: {np.mean(fitness_gen1):.2f}")
+        print(f"    - Standar Deviasi: {np.std(fitness_gen1):.2f}")
+        weights_gen1 = [self.hitung_weight(c) for c in populasi]
+        print(f"    - Total Weight (Rata-rata): {np.mean(weights_gen1):.2f}")
+        
+        # [8] CROSSOVER & MUTASI SAMPEL
+        print(f"\n[7] CONTOH CROSSOVER & MUTASI (GENERASI 1):")
+        print("─" * 100)
+        
+        parent1 = populasi[0]
+        parent2 = populasi[1]
+        child1, child2 = self.crossover_single_point(parent1, parent2)
+        child1_mutated = self.mutasi_adjustment(child1)
+        child2_mutated = self.mutasi_adjustment(child2)
+        
+        print(f"Parent 1:          {parent1}")
+        print(f"  - Weight: {self.hitung_weight(parent1):.1f}, Value: {self.hitung_value(parent1):.1f}, Fitness: {self.hitung_fitness(parent1):.1f}")
+        print(f"\nParent 2:          {parent2}")
+        print(f"  - Weight: {self.hitung_weight(parent2):.1f}, Value: {self.hitung_value(parent2):.1f}, Fitness: {self.hitung_fitness(parent2):.1f}")
+        print(f"\n[SINGLE-POINT CROSSOVER]")
+        print(f"Child 1 (Pre):     {child1}")
+        print(f"  - Weight: {self.hitung_weight(child1):.1f}, Value: {self.hitung_value(child1):.1f}, Fitness: {self.hitung_fitness(child1):.1f}")
+        print(f"\nChild 2 (Pre):     {child2}")
+        print(f"  - Weight: {self.hitung_weight(child2):.1f}, Value: {self.hitung_value(child2):.1f}, Fitness: {self.hitung_fitness(child2):.1f}")
+        print(f"\n[QUANTITY ADJUSTMENT MUTATION]")
+        print(f"Child 1 (Post):    {child1_mutated}")
+        print(f"  - Weight: {self.hitung_weight(child1_mutated):.1f}, Value: {self.hitung_value(child1_mutated):.1f}, Fitness: {self.hitung_fitness(child1_mutated):.1f}")
+        print(f"\nChild 2 (Post):    {child2_mutated}")
+        print(f"  - Weight: {self.hitung_weight(child2_mutated):.1f}, Value: {self.hitung_value(child2_mutated):.1f}, Fitness: {self.hitung_fitness(child2_mutated):.1f}")
+        print("─" * 100)
+        
+        best_overall = data_gen1[fitness_gen1.index(max(fitness_gen1))]
+        
+        # Main GA Loop
+        for gen in range(1, self.max_generations + 1):
+            fitness_scores = [self.hitung_fitness(chrom) for chrom in populasi]
+            
+            best_fit = max(fitness_scores)
+            worst_fit = min(fitness_scores)
+            avg_fit = np.mean(fitness_scores)
+            
+            self.fitness_history.append(avg_fit)
+            self.best_fitness_history.append(best_fit)
+            self.worst_fitness_history.append(worst_fit)
+            
+            avg_weight = np.mean([self.hitung_weight(c) for c in populasi])
+            self.avg_weight_history.append(avg_weight)
+            
+            best_idx = fitness_scores.index(best_fit)
+            best_chromosome = populasi[best_idx]
+            
+            if best_fit > best_overall[3]:
+                best_overall = (best_chromosome, self.hitung_weight(best_chromosome),
+                               self.hitung_value(best_chromosome), best_fit)
+            
+            # Generate new population dengan elitisme
+            new_population = [best_chromosome]
+            
+            while len(new_population) < self.pop_size:
+                parent1 = self.seleksi_roulette_wheel(populasi, fitness_scores)
+                parent2 = self.seleksi_roulette_wheel(populasi, fitness_scores)
+                
+                if random.random() < self.crossover_rate:
+                    child1, child2 = self.crossover_single_point(parent1, parent2)
+                else:
+                    child1, child2 = parent1[:], parent2[:]
+                
+                if random.random() < self.mutation_rate:
+                    child1 = self.mutasi_adjustment(child1)
+                if random.random() < self.mutation_rate:
+                    child2 = self.mutasi_adjustment(child2)
+                
+                new_population.append(child1)
+                if len(new_population) < self.pop_size:
+                    new_population.append(child2)
+            
+            populasi = new_population[:self.pop_size]
+        
+        # [9] GRAFIK PERKEMBANGAN FITNESS
+        print(f"\n[8] GRAFIK PERKEMBANGAN FITNESS PER GENERASI:")
+        print("─" * 80)
+        
+        plt.figure(figsize=(14, 5))
+        
+        # Plot 1: Fitness per Generasi
+        plt.subplot(1, 2, 1)
+        generasi = range(1, self.max_generations + 1)
+        plt.plot(generasi, self.best_fitness_history, 'g-o', label='Best Value', linewidth=2, markersize=3)
+        plt.plot(generasi, self.fitness_history, 'b--', label='Average Value', linewidth=2)
+        plt.plot(generasi, self.worst_fitness_history, 'r--', label='Worst Value', linewidth=2)
+        plt.xlabel('Generasi', fontsize=12)
+        plt.ylabel('Total Value', fontsize=12)
+        plt.title(f'Perkembangan Fitness Knapsack (Kapasitas={self.capacity})', fontsize=13, fontweight='bold')
+        plt.legend(fontsize=10)
+        plt.grid(True, alpha=0.3)
+        
+        # Plot 2: Best item distribution
+        plt.subplot(1, 2, 2)
+        best_route = best_overall[0]
+        item_labels = [f'Item_{chr(65+i)}' for i in range(self.num_items)]
+        plt.bar(item_labels, best_route, color='steelblue')
+        plt.ylabel('Quantity', fontsize=12)
+        plt.title(f'Distribusi Item Optimal (Total Value={best_overall[3]:.0f})', fontsize=13, fontweight='bold')
+        plt.grid(True, alpha=0.3, axis='y')
+        
+        plt.tight_layout()
+        plt.savefig('hasil_knapsack.png', dpi=300, bbox_inches='tight')
+        print("✓ Grafik tersimpan sebagai 'hasil_knapsack.png'")
+        plt.show()
+        
+        # [10] HASIL AKHIR
+        print(f"\n[9] HASIL OPTIMASI AKHIR:")
+        print("─" * 80)
+        print(f"Solusi Terbaik: {best_overall[0]}")
+        print(f"Total Weight: {best_overall[1]:.1f} / {self.capacity}")
+        print(f"Total Value: {best_overall[2]:.1f}")
+        print(f"Fitness: {best_overall[3]:.1f}")
+        gen_conv = self.best_fitness_history.index(best_overall[3]) + 1
+        print(f"Generasi Pencapaian: {gen_conv} (dari {self.max_generations})")
+        
+        improvement = ((best_overall[3] - max(fitness_gen1)) / max(fitness_gen1)) * 100
+        print(f"Improvement: {improvement:.2f}%")
+        
+        print("\n" + "=" * 100)
+        
+        return best_overall
+
+
+# ========================================
+# JALANKAN PROGRAM
+# ========================================
+
+if __name__ == "__main__":
+    print("\n\n")
+    print("#" * 100)
+    print("# DATA BARANG KNAPSACK")
+    print("#" * 100)
+    
+    # Format: (weight, value, available_qty)
+    items = [
+        (3, 10, 5),    # Item_A
+        (5, 15, 4),    # Item_B
+        (2, 8, 6),     # Item_C
+        (7, 20, 3),    # Item_D
+        (4, 12, 5),    # Item_E
+    ]
+    
+    capacity = 50
+    
+    # Print data barang
+    print("\n" + "─" * 80)
+    print(f"{'Item':<15} {'Weight':<12} {'Value':<12} {'Available':<12} {'Value/Weight':<12}")
+    print("─" * 80)
+    for i, (w, v, a) in enumerate(items):
+        print(f"Item_{chr(65+i):<11} {w:<12} {v:<12} {a:<12} {v/w:<12.4f}")
+    print("─" * 80)
+    print(f"Kapasitas Knapsack: {capacity} unit\n")
+    
+    # Jalankan GA
+    ga = AlgoritmaGenetika_Knapsack(
+        items=items,
+        capacity=capacity,
+        pop_size=30,
+        crossover_rate=0.8,
+        mutation_rate=0.15,
+        max_generations=100
+    )
+    
+    hasil = ga.run()
 ```
 
 ---
